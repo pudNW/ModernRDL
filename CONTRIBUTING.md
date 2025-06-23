@@ -14,13 +14,13 @@ There are many ways to contribute, from writing code and documentation to submit
 
 ### Reporting Bugs
 
-If you find a bug, please ensure the bug was not already reported by searching on GitHub under [Issues](LINK_TO_ISSUES_TAB).
+If you find a bug, please ensure the bug was not already reported by searching on GitHub under [Issues](https://github.com/pudNW/ModernRDL/issues).
 
-If you're unable to find an open issue addressing the problem, please [open a new one](LINK_TO_NEW_ISSUE_PAGE). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample or an executable test case** demonstrating the expected behavior that is not occurring.
+If you're unable to find an open issue addressing the problem, please [open a new one](https://github.com/pudNW/ModernRDL/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample or an executable test case** demonstrating the expected behavior that is not occurring.
 
 ### Suggesting Enhancements
 
-If you have an idea for an enhancement, please first search the [Issues](LINK_TO_ISSUES_TAB) to see if it has been discussed before. If not, feel free to [open a new feature request](LINK_TO_NEW_ISSUE_PAGE).
+If you have an idea for an enhancement, please first search the [Issues](https://github.com/pudNW/ModernRDL/issues) to see if it has been discussed before. If not, feel free to [open a new feature request](https://github.com/pudNW/ModernRDL/issues/new).
 
 Please provide a clear description of the enhancement, why it would be useful, and if possible, a high-level plan for implementation.
 
