@@ -75,9 +75,22 @@ We use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) fo
 
 Example: `feat(renderer): Add support for linear gradients`
 
-### Code Style
+#### Code Style
 
-Please follow the coding style of the project. We use ESLint/Prettier to enforce a consistent style. Please run the linter before committing your changes.
+To ensure a consistent code style across the project, we use **ESLint** for code quality and **Prettier** for code formatting.
+
+* **ESLint** helps us find potential bugs and enforce best practices.
+* **Prettier** automatically formats the code to maintain a uniform style.
+
+Configuration files (`.eslintrc.json`, `.prettierrc`) are included in the root of this repository. Most code editors can be configured to use these automatically.
+
+**Please run the linter and formatter before committing your changes** to ensure your contribution aligns with the project's style. You can do this by running:
+
+```bash
+npm run lint
+npm run format
+```
+(This section can be updated to include .NET styling guidelines if a C# backend is added in the future.)
 
 ---
 
