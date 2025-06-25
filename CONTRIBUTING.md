@@ -43,6 +43,7 @@ We follow the standard GitHub "fork-and-pull" workflow.
     # or
     git checkout -b fix/bug-in-rendering
     ```
+    and use `npm install` in 3 different folders, ModernRDL itself, client and server.
 4.  **Make your changes** in the new branch.
 5.  **Commit your changes**. Please follow our commit message conventions (see below).
     ```bash

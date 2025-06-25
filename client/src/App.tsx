@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
+import { useHistory } from './hooks/useHistory';
 import Toolbox, { type Tool } from './components/Toolbox';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import './App.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import Konva from 'konva';
 
 export interface CanvasItem {
   id: string;
@@ -18,8 +20,13 @@ export interface CanvasItem {
   scaleY?: number;
 }
 
-function App() {
-  const [items, setItems] = useState<CanvasItem[]>([
+interface AppState {
+  items: CanvasItem[];
+  selectedId: string | null;
+}
+
+const initialState: AppState = {
+  items: [
     {
       id: 'rect1',
       x: 150,
@@ -32,19 +39,20 @@ function App() {
       scaleX: 1,
       scaleY: 1,
     },
-  ]);
+  ],
+  selectedId: null,
+};
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+function App() {
+  const { state, setState, undo, redo } = useHistory<AppState>(initialState);
+  const { items, selectedId } = state;
 
   const draggedItemRef = useRef<Tool | null>(null);
-  const stageRef = useRef<any>(null);
+  const stageRef = useRef<Konva.Stage | null>(null);
+  const appLayoutRef = useRef<HTMLDivElement>(null);
 
   const handleDragStart = (tool: Tool) => {
     draggedItemRef.current = tool;
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -54,6 +62,8 @@ function App() {
 
     stageRef.current.setPointersPositions(e);
     const position = stageRef.current.getPointerPosition();
+
+    if (!position) return;
 
     const newItem: CanvasItem = {
       id: `item_${Date.now()}`,
@@ -65,83 +75,84 @@ function App() {
       cornerRadius: 10,
     };
 
-    setItems((prevItems) => [...prevItems, newItem])
+    setState({ ...state, items: [...items, newItem], selectedId: null });
 
     draggedItemRef.current = null;
   };
 
   const handleItemDragEnd = (e: KonvaEventObject<DragEvent>, id: string) => {
-    const newItems = items.map(item => {
+    const newItems = items.map((item) => {
       if (item.id === id) {
         return { ...item, x: e.target.x(), y: e.target.y() };
       }
       return item;
     });
-    setItems(newItems);
+    setState({ ...state, items: newItems });
   };
-
-  const handleDeleteItem = () => {
-    if (!selectedId) return;
-
-    const newItems = items.filter(item => item.id !== selectedId);
-    setItems(newItems);
-
-    setSelectedId(null);
-  };
-
-  const handlekeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Delete' || e.key === 'Backspace') {
-      handleDeleteItem();
-    }
-  };
-
-  const appLayoutRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    appLayoutRef.current?.focus();
-  }, []);
-
-  const handleItemChange = (updatedItem: CanvasItem) => {
-    const newItems = items.map(item =>
-      item.id === updatedItem.id ? updatedItem : item
-    );
-    setItems(newItems);
-  };
-
-  const selectedItem = items.find(item => item.id === selectedId);
 
   const handleTransformEnd = (id: string, newAttrs: Partial<CanvasItem>) => {
-    const newItems = items.map(item => {
+    const newItems = items.map((item) => {
       if (item.id === id) {
         return { ...item, ...newAttrs };
       }
       return item;
     });
-    setItems(newItems);
+    setState({ ...state, items: newItems });
+  };
+
+  const handleSelectItem = (id: string | null) => {
+    setState({ ...state, selectedId: id }, true);
+  };
+
+  const handleDeleteItem = () => {
+    if (!selectedId) return;
+    const newItems = items.filter((item) => item.id !== selectedId);
+    setState({ items: newItems, selectedId: null });
+  };
+
+  const handlekeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      handleDeleteItem();
+      return;
+    }
+    const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+    if (isCtrlOrCmd && e.key === 'z') {
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    }
+    if (isCtrlOrCmd && e.key === 'y') {
+      redo();
+    }
+  };
+
+  useEffect(() => {
+    appLayoutRef.current?.focus();
+  }, []);
+
+  const selectedItem = items.find((item) => item.id === selectedId);
+
+  const handleItemChange = (updatedItem: CanvasItem) => {
+    const newItems = items.map((item) => (item.id === updatedItem.id ? updatedItem : item));
+    setState({ ...state, items: newItems });
   };
 
   return (
-    <div
-      ref={appLayoutRef}
-      className="app-layout"
-      tabIndex={0}
-      onKeyDown={handlekeyDown}
-    >
+    <div ref={appLayoutRef} className="app-layout" tabIndex={0} onKeyDown={handlekeyDown}>
       <Toolbox onDragStart={handleDragStart} />
       <CanvasArea
         items={items}
         stageRef={stageRef}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onItemDragEnd={handleItemDragEnd}
         selectedId={selectedId}
-        onSelect={setSelectedId}
+        onSelect={handleSelectItem}
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        onItemDragEnd={handleItemDragEnd}
         onTransformEnd={handleTransformEnd}
       />
-      <PropertiesPanel
-        item={selectedItem}
-        onItemChange={handleItemChange} 
-      />
+      <PropertiesPanel item={selectedItem} onItemChange={handleItemChange} />
     </div>
   );
 }
