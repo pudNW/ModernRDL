@@ -1,0 +1,5 @@
+.canvas-container {
+    flex-grow: 1;
+    height: 100vh;
+    background-color: #f0f2f5;
+}

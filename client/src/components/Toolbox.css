@@ -1,0 +1,44 @@
+.toolbox-container {
+    width: 200px;
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    padding: 1rem;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0, 0.05);
+}
+
+.toolbox-title {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #343a40;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+}
+
+.tool-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tool-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: grab;
+    transition: background-color 0.2s ease;
+}
+
+.tool-item:hover {
+    background-color: #f8f9fa;
+}
+
+.tool-icon {
+    margin-right: 0.75rem;
+    font-size: 1.2rem;
+    color: #495057;
+}
+
+.tool-name {
+    font-size: 1rem;
+}
