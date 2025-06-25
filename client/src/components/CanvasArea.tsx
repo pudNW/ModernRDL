@@ -1,41 +1,44 @@
-import { useRef, useState, useEffect } from 'react';
-import { Stage, Layer, Rect, Text } from 'react-konva';
+import React from 'react';
+import { Stage, Layer, Rect } from 'react-konva';
+import type { CanvasItem } from '../App';
 import './CanvasArea.css';
+import type { KonvaEventObject } from 'konva/lib/Node';
 
-function CanvasArea() {
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [size, setSize] = useState({ width: 0, height: 0 });
+interface CanvasAreaProps {
+    items: CanvasItem[];
+    stageRef: React.RefObject<any>;
+    onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
+    onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
+    onItemDragEnd: (e: KonvaEventObject<DragEvent>, id: string) => void;
+}
 
-    useEffect(() => {
-        if (containerRef.current) {
-            setSize({
-                width: containerRef.current.offsetWidth,
-                height: containerRef.current.offsetHeight,
-            });
-        }
-    }, []);
-
+function CanvasArea({ items, stageRef, onDrop, onDragOver, onItemDragEnd }: CanvasAreaProps) {
     return (
-        <div className='canvas-container' ref={containerRef}>
-            <Stage width={size.width} height={size.height}>
+        <div
+            className='canvas-container'
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+        >
+            <Stage
+                ref={stageRef}
+                width={window.innerWidth - 220}
+                height={window.innerHeight}
+            >
                 <Layer>
-                    <Rect
-                        x={50}
-                        y={50}
-                        width={150}
-                        height={100}
-                        fill="#007bff"
-                        cornerRadius={10}
-                        draggable
-                    />
-                    <Text
-                        x={60}
-                        y={85}
-                        text="Report Item"
-                        fontSize={20}
-                        fill="white"
-                        listening={false}
-                    />
+                    {items.map((item) => (
+                        <Rect
+                            key={item.id}
+                            id={item.id}
+                            x={item.x}
+                            y={item.y}
+                            width={item.width}
+                            height={item.height}
+                            fill={item.fill}
+                            cornerRadius={item.cornerRadius}
+                            draggable
+                            onDragEnd={(e) => onItemDragEnd(e, item.id)}
+                        />
+                    ))}
                 </Layer>
             </Stage>
         </div>
