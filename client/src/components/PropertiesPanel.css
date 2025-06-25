@@ -1,0 +1,43 @@
+.panel-container {
+    width: 250px;
+    background-color: #fff;
+    border-left: 1px solid #dee2e6;
+    padding: 1rem;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+}
+
+.placeholder {
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.panel-title {
+    margin-top: 0;
+    font-size: 1.2rem;
+    color: #343a40;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.property-group {
+    margin-bottom: 1rem;
+}
+
+.property-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.property-input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
