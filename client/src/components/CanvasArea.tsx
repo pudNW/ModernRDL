@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Stage, Layer, Rect, Transformer } from 'react-konva';
+import { Stage, Layer, Rect, Transformer, Text, Group } from 'react-konva';
 import type { CanvasItem } from '../App';
 import './CanvasArea.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -15,6 +15,8 @@ interface CanvasAreaProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onTransformEnd: (id: string, newAttrs: Partial<CanvasItem>) => void;
+
+  onSetEditingItem: (id: string) => void;
 }
 
 function CanvasArea({
@@ -26,6 +28,7 @@ function CanvasArea({
   selectedId,
   onSelect,
   onTransformEnd,
+  onSetEditingItem,
 }: CanvasAreaProps) {
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedNodeRef = useRef<Konva.Rect>(null);
@@ -59,23 +62,20 @@ function CanvasArea({
           {items.map((item) => {
             const isSelected = item.id === selectedId;
             return (
-              <Rect
+              <Group
                 key={item.id}
-                ref={isSelected ? selectedNodeRef : null}
                 id={item.id}
                 x={item.x}
                 y={item.y}
-                width={item.width}
-                height={item.height}
-                fill={item.fill}
-                cornerRadius={item.cornerRadius}
                 draggable
                 rotation={item.rotation}
                 scaleX={item.scaleX}
                 scaleY={item.scaleY}
+                onDragEnd={(e) => onItemDragEnd(e, item.id)}
                 onClick={() => onSelect(item.id)}
                 onTap={() => onSelect(item.id)}
-                onDragEnd={(e) => onItemDragEnd(e, item.id)}
+                onDblClick={() => onSetEditingItem(item.id)}
+                onDblTap={() => onSetEditingItem(item.id)}
                 onTransformEnd={(e) => {
                   const node = e.target;
                   const newAttrs = {
@@ -87,7 +87,26 @@ function CanvasArea({
                   };
                   onTransformEnd?.(item.id, newAttrs);
                 }}
-              />
+              >
+                <Rect
+                  ref={isSelected ? selectedNodeRef : null}
+                  width={item.width}
+                  height={item.height}
+                  fill={item.fill}
+                  cornerRadius={item.cornerRadius}
+                />
+                <Text
+                  text={item.text}
+                  width={item.width}
+                  height={item.height}
+                  padding={10}
+                  align="center"
+                  verticalAlign="middle"
+                  fontSize={16}
+                  fill="white"
+                  listening={false}
+                />
+              </Group>
             );
           })}
           <Transformer ref={transformerRef} />

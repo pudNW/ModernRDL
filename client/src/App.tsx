@@ -3,6 +3,7 @@ import { useHistory } from './hooks/useHistory';
 import Toolbox, { type Tool } from './components/Toolbox';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
+import TextEditor from './components/TextEditor';
 import './App.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
@@ -18,11 +19,13 @@ export interface CanvasItem {
   rotation?: number;
   scaleX?: number;
   scaleY?: number;
+  text?: string;
 }
 
 interface AppState {
   items: CanvasItem[];
   selectedId: string | null;
+  editingItemId: string | null;
 }
 
 const initialState: AppState = {
@@ -38,14 +41,16 @@ const initialState: AppState = {
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
+      text: 'Double-click to edit',
     },
   ],
   selectedId: null,
+  editingItemId: null,
 };
 
 function App() {
   const { state, setState, undo, redo } = useHistory<AppState>(initialState);
-  const { items, selectedId } = state;
+  const { items, selectedId, editingItemId } = state;
 
   const draggedItemRef = useRef<Tool | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -71,13 +76,12 @@ function App() {
       y: position.y,
       width: 150,
       height: 100,
-      fill: '#28a745',
       cornerRadius: 10,
+      fill: '#28a745',
+      text: 'New Textbox',
     };
 
-    setState({ ...state, items: [...items, newItem], selectedId: null });
-
-    draggedItemRef.current = null;
+    setState({ ...state, items: [...items, newItem], selectedId: newItem.id, editingItemId: null });
   };
 
   const handleItemDragEnd = (e: KonvaEventObject<DragEvent>, id: string) => {
@@ -104,13 +108,41 @@ function App() {
     setState({ ...state, selectedId: id }, true);
   };
 
+  const handleItemChange = (updatedItem: CanvasItem) => {
+    const newItems = items.map((item) => (item.id === updatedItem.id ? updatedItem : item));
+    setState({ ...state, items: newItems });
+  };
+
+  const handleStartEditing = (id: string | null) => {
+    setState({ ...state, editingItemId: id }, true);
+  };
+
+  const handleFinishEditing = (newText: string | null) => {
+    if (newText !== null && editingItemId) {
+      const newItems = items.map(item => {
+        if (item.id === editingItemId) {
+          return { ...item, text: newText }
+        }
+        return item;
+      });
+
+      setState({ ...state, items: newItems, editingItemId: null });
+    } else {
+      setState({ ...state, editingItemId:null }, true);
+    }
+  };
+
   const handleDeleteItem = () => {
     if (!selectedId) return;
     const newItems = items.filter((item) => item.id !== selectedId);
-    setState({ items: newItems, selectedId: null });
+    setState({ items: newItems, selectedId: null, editingItemId: null });
   };
 
-  const handlekeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (editingItemId) {
+      return;
+    }
+
     if (e.key === 'Delete' || e.key === 'Backspace') {
       handleDeleteItem();
       return;
@@ -133,14 +165,10 @@ function App() {
   }, []);
 
   const selectedItem = items.find((item) => item.id === selectedId);
-
-  const handleItemChange = (updatedItem: CanvasItem) => {
-    const newItems = items.map((item) => (item.id === updatedItem.id ? updatedItem : item));
-    setState({ ...state, items: newItems });
-  };
+  const itemToEdit = items.find(item => item.id === editingItemId);
 
   return (
-    <div ref={appLayoutRef} className="app-layout" tabIndex={0} onKeyDown={handlekeyDown}>
+    <div ref={appLayoutRef} className="app-layout" tabIndex={0} onKeyDown={handleKeyDown}>
       <Toolbox onDragStart={handleDragStart} />
       <CanvasArea
         items={items}
@@ -151,8 +179,17 @@ function App() {
         onDragOver={(e) => e.preventDefault()}
         onItemDragEnd={handleItemDragEnd}
         onTransformEnd={handleTransformEnd}
+        onSetEditingItem={handleStartEditing}
       />
       <PropertiesPanel item={selectedItem} onItemChange={handleItemChange} />
+
+      {itemToEdit && stageRef.current && (
+        <TextEditor
+          stageRef={stageRef}
+          item={itemToEdit}
+          onFinishEdit={handleFinishEditing}
+        />
+      )}
     </div>
   );
 }
