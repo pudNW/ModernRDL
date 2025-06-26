@@ -61,7 +61,7 @@ function App() {
     if (!draggedItemRef.current || !stageRef.current) return;
 
     stageRef.current.setPointersPositions(e);
-    const position = stageRef.current.getPointerPosition();
+    const position = stageRef.current.getPointerPosition(); 
 
     if (!position) return;
 
