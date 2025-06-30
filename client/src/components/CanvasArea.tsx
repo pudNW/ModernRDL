@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Rect, Transformer, Text, Group } from 'react-konva';
 import type { CanvasItem, PageSettings } from '../App';
 import './CanvasArea.css';
@@ -35,6 +35,22 @@ function CanvasArea({
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedNodeRef = useRef<Konva.Rect>(null);
 
+  useEffect(() => {
+    if (selectedId && transformerRef.current && selectedNodeRef.current) {
+      transformerRef.current.nodes([selectedNodeRef.current]);
+      transformerRef.current.getLayer()?.batchDraw();
+    } else {
+      transformerRef.current?.nodes([]);
+    }
+  }, [selectedId]);
+
+  const checkDeselect = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+    const clickedOnEmpty = e.target === e.target.getStage();
+    if (clickedOnEmpty) {
+      onSelect(null);
+    }
+  };
+
   const keepNodeInside = (node: Konva.Node) => {
     const box = node.getClientRect();
     const absPos = node.absolutePosition();
@@ -57,28 +73,105 @@ function CanvasArea({
     return newAbsPos;
   };
 
-  useEffect(() => {
-    if (selectedId && transformerRef.current && selectedNodeRef.current) {
-      transformerRef.current.nodes([selectedNodeRef.current]);
-      transformerRef.current.getLayer()?.batchDraw();
-    } else {
-      transformerRef.current?.nodes([]);
-    }
-  }, [selectedId]);
+  const [stageState, setStageState] = useState({
+    scale: 0.8,
+    x: 0,
+    y: 0,
+  });
 
-  const checkDeselect = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    const clickedOnEmpty = e.target === e.target.getStage();
-    if (clickedOnEmpty) {
-      onSelect(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isPanningRef = useRef(false);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const containerHeight = containerRef.current.offsetHeight;
+      const initialScale = 0.8;
+
+      setStageState({
+        scale: initialScale,
+        x: (containerWidth - page.width * initialScale) / 2,
+        y: (containerHeight - page.height * initialScale) / 2,
+      });
     }
+  }, [page.width, page.height]); // Rerun if page size changes
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isPanningRef.current = true;
+        if(stageRef.current) stageRef.current.container().style.cursor = 'grab';
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isPanningRef.current = false;
+        if(stageRef.current) stageRef.current.container().style.cursor = 'default';
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [stageRef]);
+
+  const handleWheel = (e: KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+
+    const stage = e.target.getStage();
+    if (!stage) return;
+
+    const oldScale = stage.scaleX();
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    // How much to scale based on mouse wheel direction
+    const scaleBy = 1.05;
+    const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+
+    // Calculate new position to zoom towards the pointer
+    const mousePointTo = {
+      x: (pointer.x - stage.x()) / oldScale,
+      y: (pointer.y - stage.y()) / oldScale,
+    };
+    const newPos = {
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale,
+    };
+
+    setStageState({ scale: newScale, ...newPos });
   };
 
   return (
-    <div className="canvas-container" onDrop={onDrop} onDragOver={onDragOver}>
+    <div className="canvas-container" ref={containerRef} onDrop={onDrop} onDragOver={onDragOver}>
       <Stage
         ref={stageRef}
-        width={window.innerWidth - 220 - 250} // 220 for Toolbox, 250 for Properties Panel
-        height={window.innerHeight}
+        width={containerRef.current?.offsetWidth || 0}
+        height={containerRef.current?.offsetHeight || 0}
+        onWheel={handleWheel}
+        scaleX={stageState.scale}
+        scaleY={stageState.scale}
+        x={stageState.x}
+        y={stageState.y}
+        draggable
+        onDragStart={() => {
+          if (isPanningRef.current) {
+            if(stageRef.current) stageRef.current.container().style.cursor = 'grabbing';
+          }
+        }}
+        onDragEnd={(e) => {
+          // Only update state if we were panning
+          if (isPanningRef.current) {
+            setStageState({ ...stageState, x: e.target.x(), y: e.target.y() });
+          }
+          if(stageRef.current) stageRef.current.container().style.cursor = 'grab';
+        }}
+        dragBoundFunc={(pos) => {
+          return isPanningRef.current ? pos : stageRef.current!.absolutePosition();
+        }}
         onClick={checkDeselect}
         onTap={checkDeselect}
       >
