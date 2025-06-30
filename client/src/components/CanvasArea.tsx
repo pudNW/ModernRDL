@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Stage, Layer, Rect, Transformer, Text, Group } from 'react-konva';
-import type { CanvasItem } from '../App';
+import type { CanvasItem, PageSettings } from '../App';
 import './CanvasArea.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 
 interface CanvasAreaProps {
   items: CanvasItem[];
+  page: PageSettings;
   stageRef: React.RefObject<Konva.Stage | null>;
   onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
   onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -21,6 +22,7 @@ interface CanvasAreaProps {
 
 function CanvasArea({
   items,
+  page,
   stageRef,
   onDrop,
   onDragOver,
@@ -32,6 +34,28 @@ function CanvasArea({
 }: CanvasAreaProps) {
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedNodeRef = useRef<Konva.Rect>(null);
+
+  const keepNodeInside = (node: Konva.Node) => {
+    const box = node.getClientRect();
+    const absPos = node.absolutePosition();
+    const offsetX = box.x - absPos.x;
+    const offsetY = box.y - absPos.y;
+
+    const newAbsPos = { ...absPos };
+    if (box.x < 0) {
+      newAbsPos.x = -offsetX;
+    }
+    if (box.y < 0) {
+      newAbsPos.y = -offsetY;
+    }
+    if (box.x + box.width > page.width) {
+      newAbsPos.x = page.width - box.width - offsetX;
+    }
+    if (box.y + box.height > page.height) {
+      newAbsPos.y = page.height - box.height - offsetY;
+    }
+    return newAbsPos;
+  };
 
   useEffect(() => {
     if (selectedId && transformerRef.current && selectedNodeRef.current) {
@@ -59,6 +83,20 @@ function CanvasArea({
         onTap={checkDeselect}
       >
         <Layer>
+          {/* Paper Rectangle */}
+          <Rect
+            x={0}
+            y={0}
+            width={page.width}
+            height={page.height}
+            fill="white"
+            shadowBlur={10}
+            shadowOpacity={0.3}
+            shadowOffsetX={5}
+            shadowOffsetY={5}
+          />
+
+          {/* Render all items */}
           {items.map((item) => {
             const isSelected = item.id === selectedId;
             return (
@@ -67,7 +105,6 @@ function CanvasArea({
                 id={item.id}
                 x={item.x}
                 y={item.y}
-                draggable
                 rotation={item.rotation}
                 scaleX={item.scaleX}
                 scaleY={item.scaleY}
@@ -76,8 +113,18 @@ function CanvasArea({
                 onTap={() => onSelect(item.id)}
                 onDblClick={() => onSetEditingItem(item.id)}
                 onDblTap={() => onSetEditingItem(item.id)}
+                draggable
+                dragBoundFunc={(pos) => {
+                  const node = stageRef.current?.findOne(`#${item.id}`);
+                  if (node) {
+                    node.absolutePosition(pos);
+                    return keepNodeInside(node);
+                  }
+                  return pos;
+                }}
                 onTransformEnd={(e) => {
                   const node = e.target;
+                  node.absolutePosition(keepNodeInside(node));
                   const newAttrs = {
                     x: node.x(),
                     y: node.y(),

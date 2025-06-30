@@ -23,10 +23,23 @@ export interface CanvasItem {
   text?: string;
 }
 
+export interface PageSettings {
+  width: number;
+  height: number;
+  format: 'A4' | 'Letter';
+  orientation: 'portrait' | 'landscape';
+}
+
 interface AppState {
   items: CanvasItem[];
   selectedId: string | null;
   editingItemId: string | null;
+  page: PageSettings;
+}
+
+const PAGE_DIMENSIONS = {
+  A4: { width: 794, height: 1123 },
+  Letter: { width: 816, height: 1056 },
 }
 
 const initialState: AppState = {
@@ -47,11 +60,17 @@ const initialState: AppState = {
   ],
   selectedId: null,
   editingItemId: null,
+  page: { // Set default page settings
+    format: 'A4',
+    orientation: 'portrait',
+    width: PAGE_DIMENSIONS.A4.width,
+    height: PAGE_DIMENSIONS.A4.height,
+  },
 };
 
 function App() {
   const { state, setState, undo, redo } = useHistory<AppState>(initialState);
-  const { items, selectedId, editingItemId } = state;
+  const { items, selectedId, editingItemId, page } = state;
 
   const draggedItemRef = useRef<Tool | null>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
@@ -136,7 +155,7 @@ function App() {
   const handleDeleteItem = () => {
     if (!selectedId) return;
     const newItems = items.filter((item) => item.id !== selectedId);
-    setState({ items: newItems, selectedId: null, editingItemId: null });
+    setState({ ...state, items: newItems, selectedId: null, editingItemId: null });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -206,6 +225,23 @@ function App() {
     event.target.value = '';
   };
 
+  const handlePageSettingsChange = (newSettings: Partial<PageSettings>) => {
+    const newPage = { ...page, ...newSettings };
+
+    // Swap width and height if orientation changes
+    const format = newPage.format as 'A4' | 'Letter';
+    const dimensions = PAGE_DIMENSIONS[format];
+    if (newPage.orientation === 'portrait') {
+      newPage.width = dimensions.width;
+      newPage.height = dimensions.height;
+    } else {
+      newPage.width = dimensions.height;
+      newPage.height = dimensions.width;
+    }
+
+    setState({ ...state, page: newPage });
+  };
+
   useEffect(() => {
     appLayoutRef.current?.focus();
   }, []);
@@ -220,6 +256,7 @@ function App() {
         <Toolbox onDragStart={handleDragStart} />
         <CanvasArea
           items={items}
+          page={page}
           stageRef={stageRef}
           selectedId={selectedId}
           onSelect={handleSelectItem}
@@ -229,7 +266,7 @@ function App() {
           onTransformEnd={handleTransformEnd}
           onSetEditingItem={handleStartEditing}
         />
-        <PropertiesPanel item={selectedItem} onItemChange={handleItemChange} />
+        <PropertiesPanel item={selectedItem} page={page} onItemChange={handleItemChange} onPageSettingsChange={handlePageSettingsChange} />
 
         {itemToEdit && stageRef.current && (
           <TextEditor

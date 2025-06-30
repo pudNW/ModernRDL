@@ -1,21 +1,50 @@
 import React, { useState } from 'react';
-import type { CanvasItem } from '../App';
+import type { CanvasItem, PageSettings } from '../App';
 import './PropertiesPanel.css';
 import { SketchPicker } from 'react-color';
 import type { ColorResult } from 'react-color';
 
 interface PropertiesPanelProps {
   item: CanvasItem | undefined;
+  page: PageSettings;
   onItemChange: (item: CanvasItem) => void;
+  onPageSettingsChange: (settings: Partial<PageSettings>) => void;
 }
 
-function PropertiesPanel({ item, onItemChange }: PropertiesPanelProps) {
+function PropertiesPanel({ item, page, onItemChange, onPageSettingsChange }: PropertiesPanelProps) {
   const [displayColorPicker, setDisplayColorPicker] = useState(false);
 
   if (!item) {
     return (
       <div className="panel-container">
-        <div className="placeholder">Select an item to see its properties.</div>
+        <h3 className='panel-title'>Report Settings</h3>
+        <fieldset className='property-fieldset'>
+          <legend className='fieldset-legend'>Page Layout</legend>
+          <div className='property-row'>
+            <label htmlFor="page-format" className='property-label'>Format</label>
+            <select
+              id="page-format"
+              className='property-select'
+              value={page.format}
+              onChange={(e) => onPageSettingsChange({ format: e.target.value as 'A4' | 'Letter' })}
+            >
+              <option value="A4">A4</option>
+              <option value="Letter">Letter</option>
+            </select>
+          </div>
+          <div className='property-row'>
+            <label htmlFor="page-orientation" className='property-label'>Orientation</label>
+            <select
+              id="page-orientation"
+              className='property-select'
+              value={page.orientation}
+              onChange={(e) => onPageSettingsChange({ orientation: e.target.value as 'portrait' | 'landscape' })}
+            >
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+        </fieldset>
       </div>
     );
   }
