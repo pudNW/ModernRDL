@@ -1,9 +1,17 @@
-.app-layout {
+.app-container {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
+  background-color: #f0f2f5;
 }
 
-.app-layout::focus {
+.app-container:focus {
   outline: none;
+}
+
+.main-content {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
 }

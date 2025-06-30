@@ -4,6 +4,7 @@ import Toolbox, { type Tool } from './components/Toolbox';
 import CanvasArea from './components/CanvasArea';
 import PropertiesPanel from './components/PropertiesPanel';
 import TextEditor from './components/TextEditor';
+import TopBar from './components/TopBar';
 import './App.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
@@ -160,6 +161,51 @@ function App() {
     }
   };
 
+  const handleSaveProject = () => {
+    try {
+      const stateToSave = JSON.stringify(state, null, 2);
+      const blob = new Blob([stateToSave], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `project-${Date.now()}.mrdl`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to save project:", error);
+      alert("Error: Could not save the project.");
+    }
+  };
+
+  const handleLoadProjecct = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') throw new Error("File is not readable");
+
+        const loadedState = JSON.parse(text) as AppState;
+
+        if ('items' in loadedState && 'selectedId' in loadedState) {
+          setState(loadedState);
+        } else {
+          throw new Error("Invalid project file format.");
+        }
+      } catch (error) {
+        console.error("Failed to laod project:", error);
+        alert("Error: The selected file is not a valid project file.");
+      }
+    };
+    reader.readAsText(file);
+
+    event.target.value = '';
+  };
+
   useEffect(() => {
     appLayoutRef.current?.focus();
   }, []);
@@ -168,28 +214,31 @@ function App() {
   const itemToEdit = items.find(item => item.id === editingItemId);
 
   return (
-    <div ref={appLayoutRef} className="app-layout" tabIndex={0} onKeyDown={handleKeyDown}>
-      <Toolbox onDragStart={handleDragStart} />
-      <CanvasArea
-        items={items}
-        stageRef={stageRef}
-        selectedId={selectedId}
-        onSelect={handleSelectItem}
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onItemDragEnd={handleItemDragEnd}
-        onTransformEnd={handleTransformEnd}
-        onSetEditingItem={handleStartEditing}
-      />
-      <PropertiesPanel item={selectedItem} onItemChange={handleItemChange} />
-
-      {itemToEdit && stageRef.current && (
-        <TextEditor
+    <div ref={appLayoutRef} className="app-container" tabIndex={0} onKeyDown={handleKeyDown}>
+      <TopBar onSave={handleSaveProject} onLoad={handleLoadProjecct} />
+      <div className='main-content'>
+        <Toolbox onDragStart={handleDragStart} />
+        <CanvasArea
+          items={items}
           stageRef={stageRef}
-          item={itemToEdit}
-          onFinishEdit={handleFinishEditing}
+          selectedId={selectedId}
+          onSelect={handleSelectItem}
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onItemDragEnd={handleItemDragEnd}
+          onTransformEnd={handleTransformEnd}
+          onSetEditingItem={handleStartEditing}
         />
-      )}
+        <PropertiesPanel item={selectedItem} onItemChange={handleItemChange} />
+
+        {itemToEdit && stageRef.current && (
+          <TextEditor
+            stageRef={stageRef}
+            item={itemToEdit}
+            onFinishEdit={handleFinishEditing}
+          />
+        )}
+      </div>
     </div>
   );
 }
