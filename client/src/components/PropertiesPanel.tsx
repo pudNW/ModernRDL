@@ -44,6 +44,34 @@ function PropertiesPanel({ item, page, onItemChange, onPageSettingsChange }: Pro
               <option value="landscape">Landscape</option>
             </select>
           </div>
+          <div className='property-row-double'>
+            <div className="property-group-half">
+              <label htmlFor="header-height" className="property-label">
+                Header
+              </label>
+              <input
+                id="header-height"
+                type="number"
+                className="property-input"
+                value={page.headerHeight}
+                min="0"
+                onChange={(e) => onPageSettingsChange({ headerHeight: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+            <div className="property-group-half">
+              <label htmlFor="footer-height" className="property-label">
+                Footer
+              </label>
+              <input
+                id="footer-height"
+                type="number"
+                className="property-input"
+                value={page.footerHeight}
+                min="0"
+                onChange={(e) => onPageSettingsChange({ footerHeight: parseInt(e.target.value, 10) || 0 })}
+              />
+            </div>
+          </div>
         </fieldset>
       </div>
     );

@@ -50,6 +50,7 @@
 .property-label {
   font-size: 0.9rem;
   color: #495057;
+  white-space: nowrap;
 }
 
 .property-input {
@@ -104,4 +105,23 @@
   border-radius: 4px;
   font-size: 0.9rem;
   background-color: white;
+}
+
+.property-row-double {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.property-group-half {
+  flex: 1;
+}
+
+.property-group-half .property-label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.property-group-half .property-input {
+  width: 100%;
 }

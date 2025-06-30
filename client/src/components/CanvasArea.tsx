@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Rect, Transformer, Text, Group } from 'react-konva';
+import { Stage, Layer, Rect, Transformer, Text, Group, Line } from 'react-konva';
 import type { CanvasItem, PageSettings } from '../App';
 import './CanvasArea.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -45,32 +45,35 @@ function CanvasArea({
   }, [selectedId]);
 
   const checkDeselect = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
-    const clickedOnEmpty = e.target === e.target.getStage();
+    const clickedOnEmpty = e.target === e.target.getStage() || e.target.hasName('page-background');
     if (clickedOnEmpty) {
       onSelect(null);
     }
   };
 
-  const keepNodeInside = (node: Konva.Node) => {
-    const box = node.getClientRect();
-    const absPos = node.absolutePosition();
-    const offsetX = box.x - absPos.x;
-    const offsetY = box.y - absPos.y;
+  const keepNodeInSection = (node: Konva.Node, section: CanvasItem['section']) => {
+    const box = node.getClientRect({ skipTransform: true });
+    
+    // Define boundaries for the item.
+    const minX = 0;
+    const maxX = page.width - box.width;
+    let minY = 0;
+    let maxY = page.height - box.height;
 
-    const newAbsPos = { ...absPos };
-    if (box.x < 0) {
-      newAbsPos.x = -offsetX;
+    // Adjust vertical boundaries based on the item's section.
+    if (section === 'header') {
+      maxY = page.headerHeight - box.height;
+    } else if (section === 'body') {
+      minY = page.headerHeight;
+      maxY = page.height - page.footerHeight - box.height;
+    } else if (section === 'footer') {
+      minY = page.height - page.footerHeight;
     }
-    if (box.y < 0) {
-      newAbsPos.y = -offsetY;
-    }
-    if (box.x + box.width > page.width) {
-      newAbsPos.x = page.width - box.width - offsetX;
-    }
-    if (box.y + box.height > page.height) {
-      newAbsPos.y = page.height - box.height - offsetY;
-    }
-    return newAbsPos;
+
+    const x = Math.max(minX, Math.min(node.x(), maxX));
+    const y = Math.max(minY, Math.min(node.y(), maxY));
+
+    return { x, y };
   };
 
   const [stageState, setStageState] = useState({
@@ -94,7 +97,7 @@ function CanvasArea({
         y: (containerHeight - page.height * initialScale) / 2,
       });
     }
-  }, [page.width, page.height]); // Rerun if page size changes
+  }, [page.width, page.height]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -158,8 +161,8 @@ function CanvasArea({
         y={stageState.y}
         draggable
         onDragStart={() => {
-          if (isPanningRef.current) {
-            if(stageRef.current) stageRef.current.container().style.cursor = 'grabbing';
+          if (isPanningRef.current && stageRef.current) {
+            stageRef.current.container().style.cursor = 'grabbing';
           }
         }}
         onDragEnd={(e) => {
@@ -167,7 +170,9 @@ function CanvasArea({
           if (isPanningRef.current) {
             setStageState({ ...stageState, x: e.target.x(), y: e.target.y() });
           }
-          if(stageRef.current) stageRef.current.container().style.cursor = 'grab';
+          if (stageRef.current) {
+            stageRef.current.container().style.cursor = isPanningRef.current ? 'grab' : 'default';
+          }
         }}
         dragBoundFunc={(pos) => {
           return isPanningRef.current ? pos : stageRef.current!.absolutePosition();
@@ -187,7 +192,50 @@ function CanvasArea({
             shadowOpacity={0.3}
             shadowOffsetX={5}
             shadowOffsetY={5}
+            name='page-background'
           />
+
+          {/* Header Section Visual - ONLY show if headerHeight > 0 */}
+          {page.headerHeight > 0 && (
+            <>
+              <Line
+                points={[0, page.headerHeight, page.width, page.headerHeight]}
+                stroke="#007bff"
+                strokeWidth={1}
+                dash={[10, 5]}
+                listening={false}
+              />
+              <Text
+                text='Header'
+                x={5}
+                y={page.headerHeight - 20}
+                fill="#007bff"
+                opacity={0.5}
+                listening={false}
+              />
+            </>
+          )}
+
+          {/* Footer Section Visual - ONLY show if footerHeight > 0 */}
+          {page.footerHeight > 0 && (
+            <>
+              <Line
+                points={[0, page.height - page.footerHeight, page.width, page.height - page.footerHeight]}
+                stroke="#007bff"
+                strokeWidth={1}
+                dash={[10, 5]}
+                listening={false}
+              />
+              <Text
+                text="Footer"
+                x={5}
+                y={page.height - page.footerHeight + 5}
+                fill="#007bff"
+                opacity={0.5}
+                listening={false}
+              />
+            </>
+          )}
 
           {/* Render all items */}
           {items.map((item) => {
@@ -210,14 +258,18 @@ function CanvasArea({
                 dragBoundFunc={(pos) => {
                   const node = stageRef.current?.findOne(`#${item.id}`);
                   if (node) {
-                    node.absolutePosition(pos);
-                    return keepNodeInside(node);
+                    node.x(pos.x);
+                    node.y(pos.y);
+                    return keepNodeInSection(node, item.section);
                   }
                   return pos;
                 }}
                 onTransformEnd={(e) => {
                   const node = e.target;
-                  node.absolutePosition(keepNodeInside(node));
+                  const newPos = keepNodeInSection(node, item.section);
+                  node.x(newPos.x);
+                  node.y(newPos.y);
+
                   const newAttrs = {
                     x: node.x(),
                     y: node.y(),

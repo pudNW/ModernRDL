@@ -21,6 +21,7 @@ export interface CanvasItem {
   scaleX?: number;
   scaleY?: number;
   text?: string;
+  section: 'header' | 'body' | 'footer';
 }
 
 export interface PageSettings {
@@ -28,6 +29,8 @@ export interface PageSettings {
   height: number;
   format: 'A4' | 'Letter';
   orientation: 'portrait' | 'landscape';
+  headerHeight: number;
+  footerHeight: number;
 }
 
 interface AppState {
@@ -56,6 +59,7 @@ const initialState: AppState = {
       scaleX: 1,
       scaleY: 1,
       text: 'Double-click to edit',
+      section: 'body',
     },
   ],
   selectedId: null,
@@ -65,6 +69,8 @@ const initialState: AppState = {
     orientation: 'portrait',
     width: PAGE_DIMENSIONS.A4.width,
     height: PAGE_DIMENSIONS.A4.height,
+    headerHeight: 0,
+    footerHeight: 0,
   },
 };
 
@@ -90,6 +96,13 @@ function App() {
 
     if (!position) return;
 
+    let section: CanvasItem['section'] = 'body';
+    if (position.y < page.headerHeight) {
+      section = 'header';
+    } else if (position.y > page.height - page.footerHeight) {
+      section = 'footer';
+    }
+
     const newItem: CanvasItem = {
       id: `item_${Date.now()}`,
       x: position.x,
@@ -99,6 +112,7 @@ function App() {
       cornerRadius: 10,
       fill: '#28a745',
       text: 'New Textbox',
+      section: section,
     };
 
     setState({ ...state, items: [...items, newItem], selectedId: newItem.id, editingItemId: null });
@@ -198,7 +212,7 @@ function App() {
     }
   };
 
-  const handleLoadProjecct = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLoadProject = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -251,7 +265,7 @@ function App() {
 
   return (
     <div ref={appLayoutRef} className="app-container" tabIndex={0} onKeyDown={handleKeyDown}>
-      <TopBar onSave={handleSaveProject} onLoad={handleLoadProjecct} />
+      <TopBar onSave={handleSaveProject} onLoad={handleLoadProject} />
       <div className='main-content'>
         <Toolbox onDragStart={handleDragStart} />
         <CanvasArea
@@ -266,7 +280,12 @@ function App() {
           onTransformEnd={handleTransformEnd}
           onSetEditingItem={handleStartEditing}
         />
-        <PropertiesPanel item={selectedItem} page={page} onItemChange={handleItemChange} onPageSettingsChange={handlePageSettingsChange} />
+        <PropertiesPanel
+          item={selectedItem}
+          page={page}
+          onItemChange={handleItemChange}
+          onPageSettingsChange={handlePageSettingsChange}
+        />
 
         {itemToEdit && stageRef.current && (
           <TextEditor
