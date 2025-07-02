@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Rect, Transformer, Text, Group, Line } from 'react-konva';
-import type { CanvasItem, PageSettings } from '../App';
+import type { CanvasItem, PageSettings, TableItem, TextboxItem } from '../App';
 import './CanvasArea.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
@@ -20,6 +20,94 @@ interface CanvasAreaProps {
   onSetEditingItem: (id: string) => void;
 }
 
+const TextboxComponent = ({
+  item,
+  isSelected,
+  selectedNodeRef,
+}: {
+  item: TextboxItem;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onSetEditingItem: (id: string) => void;
+  selectedNodeRef: React.RefObject<Konva.Rect>;
+}) => (
+  <>
+    <Rect
+      ref={isSelected ? selectedNodeRef : null}
+      width={item.width}
+      height={item.height}
+      fill={item.fill}
+      cornerRadius={item.cornerRadius}
+    />
+    <Text
+      text={item.text}
+      width={item.width}
+      height={item.height}
+      padding={10}
+      align="center"
+      verticalAlign="middle"
+      fontSize={16}
+      fill="white"
+      listening={false}
+    />
+  </>
+);
+
+const TableComponent = ({
+  item,
+  isSelected,
+  selectedNodeRef,
+}: {
+  item: TableItem;
+  isSelected: boolean;
+  selectedNodeRef: React.RefObject<Konva.Rect>;
+}) => {
+  const cells = [];
+  let currentY = 0;
+  for (let i = 0; i < item.rowCount; i++) {
+    let currentX = 0;
+    for (let j = 0; j < item.columnCount; j++) {
+      cells.push(
+        <>
+          <Rect
+            key={`cell-${i}-${j}`}
+            x={currentX}
+            y={currentY}
+            width={item.columnWidths[j]}
+            height={item.rowHeights[i]}
+            stroke="black"
+            strokeWidth={1}
+          />
+          <Text
+            key={`text-${i}-${j}`}
+            x={currentX + 5}
+            y={currentY + 5}
+            text={item.tableData[i][j]}
+            width={item.columnWidths[j] - 10}
+            height={item.rowHeights[i] - 10}
+            verticalAlign="middle"
+          />
+        </>
+      );
+      currentX += item.columnWidths[j];
+    }
+    currentY += item.rowHeights[i];
+  }
+
+  return (
+    <>
+      {/* Add a reference rectangle for the transformer to attach to */}
+      <Rect
+        ref={isSelected ? selectedNodeRef : null}
+        width={item.width}
+        height={item.height}
+        listening={false}
+      />
+      {cells}
+    </>
+  );
+};
+
 function CanvasArea({
   items,
   page,
@@ -33,7 +121,7 @@ function CanvasArea({
   onSetEditingItem,
 }: CanvasAreaProps) {
   const transformerRef = useRef<Konva.Transformer>(null);
-  const selectedNodeRef = useRef<Konva.Rect>(null);
+  const selectedNodeRef = useRef<Konva.Rect>(null) as React.RefObject<Konva.Rect>;
 
   useEffect(() => {
     if (selectedId && transformerRef.current && selectedNodeRef.current) {
@@ -85,7 +173,7 @@ function CanvasArea({
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         isPanningRef.current = false;
-        if(stageRef.current) stageRef.current.container().style.cursor = 'default';
+        if (stageRef.current) stageRef.current.container().style.cursor = 'default';
       }
     };
 
@@ -157,7 +245,7 @@ function CanvasArea({
         onTap={checkDeselect}
       >
         <Layer>
-          {/* Paper Rectangle */}
+          {/* Paper and Guides */}
           <Rect
             x={0}
             y={0}
@@ -168,58 +256,38 @@ function CanvasArea({
             shadowOpacity={0.3}
             shadowOffsetX={5}
             shadowOffsetY={5}
-            name='page-background'
+            name="page-background"
           />
-
-          {/* Header Section Visual - ONLY show if headerHeight > 0 */}
           {page.headerHeight > 0 && (
-            <>
-              <Line
-                points={[0, page.headerHeight, page.width, page.headerHeight]}
-                stroke="#007bff"
-                strokeWidth={1}
-                dash={[10, 5]}
-                listening={false}
-              />
-              <Text
-                text='Header'
-                x={5}
-                y={page.headerHeight - 20}
-                fill="#007bff"
-                opacity={0.5}
-                listening={false}
-              />
-            </>
+            <Line
+              points={[0, page.headerHeight, page.width, page.headerHeight]}
+              stroke="#007bff"
+              strokeWidth={1}
+              dash={[10, 5]}
+              listening={false}
+            />
           )}
-
-          {/* Footer Section Visual - ONLY show if footerHeight > 0 */}
           {page.footerHeight > 0 && (
-            <>
-              <Line
-                points={[0, page.height - page.footerHeight, page.width, page.height - page.footerHeight]}
-                stroke="#007bff"
-                strokeWidth={1}
-                dash={[10, 5]}
-                listening={false}
-              />
-              <Text
-                text="Footer"
-                x={5}
-                y={page.height - page.footerHeight + 5}
-                fill="#007bff"
-                opacity={0.5}
-                listening={false}
-              />
-            </>
+            <Line
+              points={[
+                0,
+                page.height - page.footerHeight,
+                page.width,
+                page.height - page.footerHeight,
+              ]}
+              stroke="#007bff"
+              strokeWidth={1}
+              dash={[10, 5]}
+              listening={false}
+            />
           )}
 
-          {/* A group for all items that will be clipped */}
           <Group
-            clipFunc={(ctx) =>{
+            clipFunc={(ctx) => {
               ctx.rect(0, 0, page.width, page.height);
             }}
           >
-            {/* Render all items inside the clipping group */}
+            {/* Render all items */}
             {items.map((item) => {
               const isSelected = item.id === selectedId;
               return (
@@ -229,44 +297,37 @@ function CanvasArea({
                   x={item.x}
                   y={item.y}
                   rotation={item.rotation}
-                  scaleX={item.scaleX}
-                  scaleY={item.scaleY}
+                  draggable
+                  // scaleX={item.scaleX}
+                  // scaleY={item.scaleY}
                   onDragEnd={(e) => onItemDragEnd(e, item.id)}
                   onClick={() => onSelect(item.id)}
                   onTap={() => onSelect(item.id)}
-                  onDblClick={() => onSetEditingItem(item.id)}
-                  onDblTap={() => onSetEditingItem(item.id)}
-                  draggable
+                  // onDblClick={() => onSetEditingItem(item.id)}
+                  // onDblTap={() => onSetEditingItem(item.id)}
                   onTransformEnd={(e) => {
                     const node = e.target;
-                    const newAttrs = {
-                      x: node.x(),
-                      y: node.y(),
-                      rotation: node.rotation(),
-                      scaleX: node.scaleX(),
-                      scaleY: node.scaleY(),
-                    };
+                    const newAttrs = { x: node.x(), y: node.y(), rotation: node.rotation() };
                     onTransformEnd?.(item.id, newAttrs);
                   }}
                 >
-                  <Rect
-                    ref={isSelected ? selectedNodeRef : null}
-                    width={item.width}
-                    height={item.height}
-                    fill={item.fill}
-                    cornerRadius={item.cornerRadius}
-                  />
-                  <Text
-                    text={item.text}
-                    width={item.width}
-                    height={item.height}
-                    padding={10}
-                    align="center"
-                    verticalAlign="middle"
-                    fontSize={16}
-                    fill="white"
-                    listening={false}
-                  />
+                  {/* Conditional Rendering based on item type */}
+                  {item.type === 'textbox' && (
+                    <TextboxComponent
+                      item={item}
+                      isSelected={isSelected}
+                      onSelect={() => onSelect(item.id)}
+                      onSetEditingItem={() => onSetEditingItem(item.id)}
+                      selectedNodeRef={selectedNodeRef}
+                    />
+                  )}
+                  {item.type === 'table' && (
+                    <TableComponent
+                      item={item}
+                      isSelected={isSelected}
+                      selectedNodeRef={selectedNodeRef}
+                    />
+                  )}
                 </Group>
               );
             })}

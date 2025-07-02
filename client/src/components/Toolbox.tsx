@@ -1,9 +1,9 @@
 import React from 'react';
 import './Toolbox.css';
-import { FaRegSquare, FaImage } from 'react-icons/fa';
+import { FaRegSquare, FaImage, FaTable } from 'react-icons/fa';
 
 export interface Tool {
-  id: string;
+  id: 'textbox' | 'image' | 'table';
   name: string;
   icon: React.ReactNode;
 }
@@ -11,6 +11,7 @@ export interface Tool {
 const tools: Tool[] = [
   { id: 'textbox', name: 'Textbox', icon: <FaRegSquare /> },
   { id: 'image', name: 'Image', icon: <FaImage /> },
+  { id: 'table', name: 'Table', icon: <FaTable /> },
 ];
 
 interface ToolboxProps {

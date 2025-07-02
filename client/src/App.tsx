@@ -9,20 +9,37 @@ import './App.css';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 
-export interface CanvasItem {
+export interface CanvasItemBase {
   id: string;
   x: number;
   y: number;
+  rotation?: number;
+  section: 'header' | 'body' | 'footer';
+}
+
+export interface TextboxItem extends CanvasItemBase {
+  type: 'textbox';
   width: number;
   height: number;
   fill: string;
   cornerRadius?: number;
-  rotation?: number;
   scaleX?: number;
   scaleY?: number;
   text?: string;
-  section: 'header' | 'body' | 'footer';
 }
+
+export interface TableItem extends CanvasItemBase {
+  type: 'table';
+  width: number;
+  height: number;
+  rowCount: number;
+  columnCount: number;
+  columnWidths: number[];
+  rowHeights: number[];
+  tableData: string[][];
+}
+
+export type CanvasItem = TextboxItem | TableItem;
 
 export interface PageSettings {
   width: number;
@@ -49,6 +66,7 @@ const initialState: AppState = {
   items: [
     {
       id: 'rect1',
+      type: 'textbox',
       x: 150,
       y: 150,
       width: 150,
@@ -88,51 +106,65 @@ function App() {
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-
-    if (!draggedItemRef.current || !stageRef.current) return;
+    const tool = draggedItemRef.current;
+    if (!tool || !stageRef.current) return;
 
     stageRef.current.setPointersPositions(e);
     const position = stageRef.current.getPointerPosition();
-
     if (!position) return;
 
-    // Define the size of the new item that will be created.
-    const newItemWidth = 150;
-    const newItemHeight = 40;
+    let newItem: CanvasItem;
 
-    // 1. Clamp the position to be within the page boundaries.
-    //    Math.max ensures the position is not less than 0.
-    //    Math.min ensures the position is not outside the page width/height.
-    const clampedX = Math.max(0, Math.min(position.x, page.width - newItemWidth));
-    const clampedY = Math.max(0, Math.min(position.y, page.height - newItemHeight));
-
-    // 2. Determine the section based on the clamped vertical position.
-    let section: CanvasItem['section'] = 'body';
-    if (page.headerHeight > 0 && clampedY < page.headerHeight) {
-      section = 'header';
-    } else if (page.footerHeight > 0 && clampedY >= page.height - page.footerHeight) {
-      section = 'footer';
+    if (tool.id === 'table') {
+      // Create a default table item.
+      const rowCount = 3;
+      const columnCount = 3;
+      const defaultColWidth = 100;
+      const defaultRowHeight = 30;
+      newItem = {
+        id: `item_${Date.now()}`,
+        type: 'table',
+        x: position.x,
+        y: position.y,
+        width: defaultColWidth * columnCount,
+        height: defaultRowHeight * rowCount,
+        rowCount: rowCount,
+        columnCount: columnCount,
+        columnWidths: Array(columnCount).fill(defaultColWidth),
+        rowHeights: Array(rowCount).fill(defaultRowHeight),
+        tableData: Array(rowCount)
+          .fill(null)
+          .map(() => Array(columnCount).fill('Cell')),
+        section: 'body',
+      };
+    } else {
+      // Create a default textbox item.
+      newItem = {
+        id: `item_${Date.now()}`,
+        type: 'textbox',
+        x: position.x,
+        y: position.y,
+        width: 150,
+        height: 100,
+        cornerRadius: 10,
+        fill: '#28a745',
+        text: 'New Item',
+        section: 'body',
+      };
     }
 
-    const newItem: CanvasItem = {
-      id: `item_${Date.now()}`,
-      x: clampedX,
-      y: clampedY,
-      width: newItemWidth,
-      height: newItemHeight,
-      cornerRadius: 10,
-      fill: '#28a745',
-      text: 'New Item',
-      section: section,
-    };
-
-    setState({ ...state, items: [...items, newItem], selectedId: newItem.id, editingItemId: null });
+    setState({
+      ...state,
+      items: [...items, newItem as CanvasItem],
+      selectedId: newItem.id,
+      editingItemId: null,
+    });
   };
 
   const handleItemDragEnd = (e: KonvaEventObject<DragEvent>, id: string) => {
     const newItems = items.map((item) => {
       if (item.id === id) {
-        return { ...item, x: e.target.x(), y: e.target.y() };
+        return { ...item, x: e.target.x(), y: e.target.y() } as CanvasItem;
       }
       return item;
     });
@@ -142,7 +174,12 @@ function App() {
   const handleTransformEnd = (id: string, newAttrs: Partial<CanvasItem>) => {
     const newItems = items.map((item) => {
       if (item.id === id) {
-        return { ...item, ...newAttrs };
+        // Narrow the type to the specific item type
+        if (item.type === 'textbox') {
+          return { ...item, ...newAttrs } as TextboxItem;
+        } else if (item.type === 'table') {
+          return { ...item, ...newAttrs } as TableItem;
+        }
       }
       return item;
     });
@@ -165,7 +202,7 @@ function App() {
   const handleFinishEditing = (newText: string | null) => {
     if (newText !== null && editingItemId) {
       const newItems = items.map((item) => {
-        if (item.id === editingItemId) {
+        if (item.id === editingItemId && item.type === 'textbox') {
           return { ...item, text: newText };
         }
         return item;
@@ -271,7 +308,7 @@ function App() {
   }, []);
 
   const selectedItem = items.find((item) => item.id === selectedId);
-  const itemToEdit = items.find((item) => item.id === editingItemId);
+  const itemToEdit = items.find((item) => item.id === editingItemId && item.type === 'textbox');
 
   return (
     <div ref={appLayoutRef} className="app-container" tabIndex={0} onKeyDown={handleKeyDown}>
