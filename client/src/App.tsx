@@ -43,7 +43,7 @@ interface AppState {
 const PAGE_DIMENSIONS = {
   A4: { width: 794, height: 1123 },
   Letter: { width: 816, height: 1056 },
-}
+};
 
 const initialState: AppState = {
   items: [
@@ -64,7 +64,7 @@ const initialState: AppState = {
   ],
   selectedId: null,
   editingItemId: null,
-  page: { // Set default page settings
+  page: {
     format: 'A4',
     orientation: 'portrait',
     width: PAGE_DIMENSIONS.A4.width,
@@ -92,26 +92,37 @@ function App() {
     if (!draggedItemRef.current || !stageRef.current) return;
 
     stageRef.current.setPointersPositions(e);
-    const position = stageRef.current.getPointerPosition(); 
+    const position = stageRef.current.getPointerPosition();
 
     if (!position) return;
 
+    // Define the size of the new item that will be created.
+    const newItemWidth = 150;
+    const newItemHeight = 40;
+
+    // 1. Clamp the position to be within the page boundaries.
+    //    Math.max ensures the position is not less than 0.
+    //    Math.min ensures the position is not outside the page width/height.
+    const clampedX = Math.max(0, Math.min(position.x, page.width - newItemWidth));
+    const clampedY = Math.max(0, Math.min(position.y, page.height - newItemHeight));
+
+    // 2. Determine the section based on the clamped vertical position.
     let section: CanvasItem['section'] = 'body';
-    if (position.y < page.headerHeight) {
+    if (page.headerHeight > 0 && clampedY < page.headerHeight) {
       section = 'header';
-    } else if (position.y > page.height - page.footerHeight) {
+    } else if (page.footerHeight > 0 && clampedY >= page.height - page.footerHeight) {
       section = 'footer';
     }
 
     const newItem: CanvasItem = {
       id: `item_${Date.now()}`,
-      x: position.x,
-      y: position.y,
-      width: 150,
-      height: 100,
+      x: clampedX,
+      y: clampedY,
+      width: newItemWidth,
+      height: newItemHeight,
       cornerRadius: 10,
       fill: '#28a745',
-      text: 'New Textbox',
+      text: 'New Item',
       section: section,
     };
 
@@ -153,16 +164,16 @@ function App() {
 
   const handleFinishEditing = (newText: string | null) => {
     if (newText !== null && editingItemId) {
-      const newItems = items.map(item => {
+      const newItems = items.map((item) => {
         if (item.id === editingItemId) {
-          return { ...item, text: newText }
+          return { ...item, text: newText };
         }
         return item;
       });
 
       setState({ ...state, items: newItems, editingItemId: null });
     } else {
-      setState({ ...state, editingItemId:null }, true);
+      setState({ ...state, editingItemId: null }, true);
     }
   };
 
@@ -207,8 +218,8 @@ function App() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Failed to save project:", error);
-      alert("Error: Could not save the project.");
+      console.error('Failed to save project:', error);
+      alert('Error: Could not save the project.');
     }
   };
 
@@ -220,18 +231,18 @@ function App() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result;
-        if (typeof text !== 'string') throw new Error("File is not readable");
+        if (typeof text !== 'string') throw new Error('File is not readable');
 
         const loadedState = JSON.parse(text) as AppState;
 
-        if ('items' in loadedState && 'selectedId' in loadedState) {
+        if ('items' in loadedState && 'selectedId' in loadedState && 'page' in loadedState) {
           setState(loadedState);
         } else {
-          throw new Error("Invalid project file format.");
+          throw new Error('Invalid project file format.');
         }
       } catch (error) {
-        console.error("Failed to laod project:", error);
-        alert("Error: The selected file is not a valid project file.");
+        console.error('Failed to load project:', error);
+        alert('Error: The selected file is not a valid project file.');
       }
     };
     reader.readAsText(file);
@@ -242,7 +253,6 @@ function App() {
   const handlePageSettingsChange = (newSettings: Partial<PageSettings>) => {
     const newPage = { ...page, ...newSettings };
 
-    // Swap width and height if orientation changes
     const format = newPage.format as 'A4' | 'Letter';
     const dimensions = PAGE_DIMENSIONS[format];
     if (newPage.orientation === 'portrait') {
@@ -261,12 +271,12 @@ function App() {
   }, []);
 
   const selectedItem = items.find((item) => item.id === selectedId);
-  const itemToEdit = items.find(item => item.id === editingItemId);
+  const itemToEdit = items.find((item) => item.id === editingItemId);
 
   return (
     <div ref={appLayoutRef} className="app-container" tabIndex={0} onKeyDown={handleKeyDown}>
       <TopBar onSave={handleSaveProject} onLoad={handleLoadProject} />
-      <div className='main-content'>
+      <div className="main-content">
         <Toolbox onDragStart={handleDragStart} />
         <CanvasArea
           items={items}
@@ -288,11 +298,7 @@ function App() {
         />
 
         {itemToEdit && stageRef.current && (
-          <TextEditor
-            stageRef={stageRef}
-            item={itemToEdit}
-            onFinishEdit={handleFinishEditing}
-          />
+          <TextEditor stageRef={stageRef} item={itemToEdit} onFinishEdit={handleFinishEditing} />
         )}
       </div>
     </div>

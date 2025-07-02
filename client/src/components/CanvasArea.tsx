@@ -51,31 +51,6 @@ function CanvasArea({
     }
   };
 
-  const keepNodeInSection = (node: Konva.Node, section: CanvasItem['section']) => {
-    const box = node.getClientRect({ skipTransform: true });
-    
-    // Define boundaries for the item.
-    const minX = 0;
-    const maxX = page.width - box.width;
-    let minY = 0;
-    let maxY = page.height - box.height;
-
-    // Adjust vertical boundaries based on the item's section.
-    if (section === 'header') {
-      maxY = page.headerHeight - box.height;
-    } else if (section === 'body') {
-      minY = page.headerHeight;
-      maxY = page.height - page.footerHeight - box.height;
-    } else if (section === 'footer') {
-      minY = page.height - page.footerHeight;
-    }
-
-    const x = Math.max(minX, Math.min(node.x(), maxX));
-    const y = Math.max(minY, Math.min(node.y(), maxY));
-
-    return { x, y };
-  };
-
   const [stageState, setStageState] = useState({
     scale: 0.8,
     x: 0,
@@ -102,8 +77,9 @@ function CanvasArea({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
+        e.preventDefault();
         isPanningRef.current = true;
-        if(stageRef.current) stageRef.current.container().style.cursor = 'grab';
+        if (stageRef.current) stageRef.current.container().style.cursor = 'grab';
       }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -237,71 +213,65 @@ function CanvasArea({
             </>
           )}
 
-          {/* Render all items */}
-          {items.map((item) => {
-            const isSelected = item.id === selectedId;
-            return (
-              <Group
-                key={item.id}
-                id={item.id}
-                x={item.x}
-                y={item.y}
-                rotation={item.rotation}
-                scaleX={item.scaleX}
-                scaleY={item.scaleY}
-                onDragEnd={(e) => onItemDragEnd(e, item.id)}
-                onClick={() => onSelect(item.id)}
-                onTap={() => onSelect(item.id)}
-                onDblClick={() => onSetEditingItem(item.id)}
-                onDblTap={() => onSetEditingItem(item.id)}
-                draggable
-                dragBoundFunc={(pos) => {
-                  const node = stageRef.current?.findOne(`#${item.id}`);
-                  if (node) {
-                    node.x(pos.x);
-                    node.y(pos.y);
-                    return keepNodeInSection(node, item.section);
-                  }
-                  return pos;
-                }}
-                onTransformEnd={(e) => {
-                  const node = e.target;
-                  const newPos = keepNodeInSection(node, item.section);
-                  node.x(newPos.x);
-                  node.y(newPos.y);
-
-                  const newAttrs = {
-                    x: node.x(),
-                    y: node.y(),
-                    rotation: node.rotation(),
-                    scaleX: node.scaleX(),
-                    scaleY: node.scaleY(),
-                  };
-                  onTransformEnd?.(item.id, newAttrs);
-                }}
-              >
-                <Rect
-                  ref={isSelected ? selectedNodeRef : null}
-                  width={item.width}
-                  height={item.height}
-                  fill={item.fill}
-                  cornerRadius={item.cornerRadius}
-                />
-                <Text
-                  text={item.text}
-                  width={item.width}
-                  height={item.height}
-                  padding={10}
-                  align="center"
-                  verticalAlign="middle"
-                  fontSize={16}
-                  fill="white"
-                  listening={false}
-                />
-              </Group>
-            );
-          })}
-          <Transformer ref={transformerRef} />
+          {/* A group for all items that will be clipped */}
+          <Group
+            clipFunc={(ctx) =>{
+              ctx.rect(0, 0, page.width, page.height);
+            }}
+          >
+            {/* Render all items inside the clipping group */}
+            {items.map((item) => {
+              const isSelected = item.id === selectedId;
+              return (
+                <Group
+                  key={item.id}
+                  id={item.id}
+                  x={item.x}
+                  y={item.y}
+                  rotation={item.rotation}
+                  scaleX={item.scaleX}
+                  scaleY={item.scaleY}
+                  onDragEnd={(e) => onItemDragEnd(e, item.id)}
+                  onClick={() => onSelect(item.id)}
+                  onTap={() => onSelect(item.id)}
+                  onDblClick={() => onSetEditingItem(item.id)}
+                  onDblTap={() => onSetEditingItem(item.id)}
+                  draggable
+                  onTransformEnd={(e) => {
+                    const node = e.target;
+                    const newAttrs = {
+                      x: node.x(),
+                      y: node.y(),
+                      rotation: node.rotation(),
+                      scaleX: node.scaleX(),
+                      scaleY: node.scaleY(),
+                    };
+                    onTransformEnd?.(item.id, newAttrs);
+                  }}
+                >
+                  <Rect
+                    ref={isSelected ? selectedNodeRef : null}
+                    width={item.width}
+                    height={item.height}
+                    fill={item.fill}
+                    cornerRadius={item.cornerRadius}
+                  />
+                  <Text
+                    text={item.text}
+                    width={item.width}
+                    height={item.height}
+                    padding={10}
+                    align="center"
+                    verticalAlign="middle"
+                    fontSize={16}
+                    fill="white"
+                    listening={false}
+                  />
+                </Group>
+              );
+            })}
+            <Transformer ref={transformerRef} />
+          </Group>
         </Layer>
       </Stage>
     </div>
