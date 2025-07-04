@@ -297,17 +297,23 @@ function CanvasArea({
                   x={item.x}
                   y={item.y}
                   rotation={item.rotation}
+                  scaleX={item.type === 'textbox' ? item.scaleX : 1}
+                  scaleY={item.type === 'textbox' ? item.scaleY : 1}
                   draggable
-                  // scaleX={item.scaleX}
-                  // scaleY={item.scaleY}
                   onDragEnd={(e) => onItemDragEnd(e, item.id)}
                   onClick={() => onSelect(item.id)}
                   onTap={() => onSelect(item.id)}
-                  // onDblClick={() => onSetEditingItem(item.id)}
-                  // onDblTap={() => onSetEditingItem(item.id)}
+                  onDblClick={() => onSetEditingItem(item.id)}
+                  onDblTap={() => onSetEditingItem(item.id)}
                   onTransformEnd={(e) => {
                     const node = e.target;
-                    const newAttrs = { x: node.x(), y: node.y(), rotation: node.rotation() };
+                    const newAttrs = {
+                      x: node.x(),
+                      y: node.y(),
+                      rotation: node.rotation(),
+                      scaleX: node.scaleX(),
+                      scaleY: node.scaleY(),
+                    };
                     onTransformEnd?.(item.id, newAttrs);
                   }}
                 >
