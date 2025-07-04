@@ -96,7 +96,6 @@ const TableComponent = ({
 
   return (
     <>
-      {/* Add a reference rectangle for the transformer to attach to */}
       <Rect
         ref={isSelected ? selectedNodeRef : null}
         width={item.width}
@@ -125,12 +124,17 @@ function CanvasArea({
 
   useEffect(() => {
     if (selectedId && transformerRef.current && selectedNodeRef.current) {
-      transformerRef.current.nodes([selectedNodeRef.current]);
+      const selectedItem = items.find((item) => item.id === selectedId);
+      if (selectedItem && selectedItem.type === 'textbox') {
+        transformerRef.current.nodes([selectedNodeRef.current]);
+      } else {
+        transformerRef.current?.nodes([]);
+      }
       transformerRef.current.getLayer()?.batchDraw();
     } else {
       transformerRef.current?.nodes([]);
     }
-  }, [selectedId]);
+  }, [selectedId, items]);
 
   const checkDeselect = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
     const clickedOnEmpty = e.target === e.target.getStage() || e.target.hasName('page-background');
@@ -195,11 +199,9 @@ function CanvasArea({
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
-    // How much to scale based on mouse wheel direction
     const scaleBy = 1.05;
     const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
 
-    // Calculate new position to zoom towards the pointer
     const mousePointTo = {
       x: (pointer.x - stage.x()) / oldScale,
       y: (pointer.y - stage.y()) / oldScale,
@@ -230,7 +232,6 @@ function CanvasArea({
           }
         }}
         onDragEnd={(e) => {
-          // Only update state if we were panning
           if (isPanningRef.current) {
             setStageState({ ...stageState, x: e.target.x(), y: e.target.y() });
           }
@@ -303,8 +304,16 @@ function CanvasArea({
                   onDragEnd={(e) => onItemDragEnd(e, item.id)}
                   onClick={() => onSelect(item.id)}
                   onTap={() => onSelect(item.id)}
-                  onDblClick={() => onSetEditingItem(item.id)}
-                  onDblTap={() => onSetEditingItem(item.id)}
+                  onDblClick={() => {
+                    if (item.type === 'textbox') {
+                      onSetEditingItem(item.id);
+                    }
+                  }}
+                  onDblTap={() => {
+                    if (item.type === 'textbox') {
+                      onSetEditingItem(item.id);
+                    }
+                  }}
                   onTransformEnd={(e) => {
                     const node = e.target;
                     const newAttrs = {
@@ -337,7 +346,14 @@ function CanvasArea({
                 </Group>
               );
             })}
-            <Transformer ref={transformerRef} />
+            <Transformer
+              ref={transformerRef}
+              enabledAnchors={
+                selectedId && items.find((i) => i.id === selectedId)?.type === 'textbox'
+                  ? undefined
+                  : []
+              }
+            />
           </Group>
         </Layer>
       </Stage>
